@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Demand Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f5f4f0;
+    --bg2:       #eeede8;
+    --bg3:       #e5e4de;
+    --border:    #d4d3cc;
+    --border2:   #c8c7bf;
+    --text1:     #1a1a18;
+    --text2:     #4a4a46;
+    --text3:     #888780;
+    --blue:      #185FA5;
+    --red:       #E24B4A;
+    --green:     #2d7a4f;
+    --radius-sm: 5px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font:      'Avenir', 'Avenir Next', 'Nunito', sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text1);
+    min-height: 100vh;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .app { max-width: 700px; }
+
+  /* Header */
+  .header { margin-bottom: 0.75rem; }
+  .header-top { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+  h2 { font-size: 22px; font-weight: 500; letter-spacing: -0.3px; }
+  .date-range { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .date-picker { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+  .date-picker label { font-size: 11px; color: var(--text3); }
+  .date-picker input[type=date] {
+    font-family: var(--font);
+    font-size: 11px;
+    padding: 3px 6px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    background: var(--bg2);
+    color: var(--text1);
+    outline: none;
+    cursor: pointer;
+  }
+  .date-picker input[type=date]:focus { border-color: var(--blue); }
+  .date-reset { font-size: 11px; color: var(--blue); background: none; border: none; cursor: pointer; padding: 0 2px; font-family: var(--font); text-decoration: underline; }
+
+  select {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border);
+    background: var(--bg2);
+    color: var(--text1);
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888780'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 24px;
+  }
+
+  .meta { font-size: 11px; color: var(--text3); display: flex; flex-direction: column; gap: 5px; }
+  .checkboxes { display: flex; gap: 14px; }
+  label.cb { display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; font-size: 11px; color: var(--text3); }
+  label.cb input[type=checkbox] { accent-color: var(--blue); cursor: pointer; }
+  label.cb.hidden { visibility: hidden; }
+
+  /* Cards */
+  .card {
+    background: var(--bg2);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    margin-bottom: 8px;
+  }
+
+  /* Sliders panel */
+  .sliders-panel { display: flex; align-items: stretch; gap: 12px; }
+  .sliders-panel.card { padding: 10px 14px; }
+  .sliders-col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row.has-tick-row { align-items: center; }
+  .slider-label { font-size: 11px; color: var(--text2); width: 130px; flex-shrink: 0; }
+  .slider-wrap { flex: 1; position: relative; }
+  .slider-wrap.has-tick { overflow: visible; }
+  .tick-marker {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+  }
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--blue);
+    cursor: pointer;
+    height: 16px;
+  }
+
+  .tick-line { width: 2px; height: 22px; background: var(--blue); border-radius: 1px; }
+  .tick-label { font-size: 9px; color: var(--blue); font-weight: 500; white-space: nowrap; margin-top: 3px; }
+
+  .divider-v { width: 0.5px; align-self: stretch; background: var(--border); }
+
+  /* NumInput */
+  .num-input {
+    display: flex; align-items: stretch;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .num-input input[type=number] {
+    width: 44px; text-align: center;
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    padding: 2px 0; border: none; outline: none;
+    background: transparent; color: var(--text1);
+    -moz-appearance: textfield;
+  }
+  .num-input input[type=number]::-webkit-inner-spin-button,
+  .num-input input[type=number]::-webkit-outer-spin-button { display: none; }
+  .num-unit { font-size: 11px; color: var(--text3); display: flex; align-items: center; padding-right: 3px; user-select: none; }
+  .spin-btns { display: flex; flex-direction: column; border-left: 0.5px solid var(--border); }
+  .spin-btn {
+    background: var(--bg2); border: none; color: var(--text3);
+    cursor: pointer; font-size: 9px; line-height: 1; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    width: 18px; flex: 1;
+  }
+  .spin-btn:first-child { border-bottom: 0.5px solid var(--border); }
+  .spin-btn:hover { background: var(--bg3); color: var(--text1); }
+  .spin-btn:active { opacity: 0.6; }
+
+  /* Coffee badger section */
+  .cb-section { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: 6px; align-self: stretch; }
+  .cb-label { font-size: 11px; color: var(--text2); text-align: center; line-height: 1.3; }
+
+  /* Skew panel */
+  .skew-panel { display: flex; align-items: center; gap: 12px; }
+  .skew-label { font-size: 11px; color: var(--text2); width: 130px; flex-shrink: 0; padding-top: 2px; }
+  .skew-right { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .skew-ticks { position: relative; height: 30px; }
+  .skew-tick {
+    position: absolute;
+    font-size: 10px; text-align: center; line-height: 1.4;
+    color: var(--text3); font-weight: 400;
+    transition: color 0.1s, font-weight 0.1s;
+  }
+  .skew-tick.active { color: var(--text1); font-weight: 500; }
+
+  .mini-chart { flex-shrink: 0; width: 80px; }
+
+  /* Summary cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; }
+  .summary-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; min-height: 72px;
+  }
+  .summary-title { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .summary-big { font-size: 20px; font-weight: 500; }
+  .summary-big span { font-size: 12px; font-weight: 400; color: var(--text2); }
+  .summary-rows { width: 100%; max-width: 160px; }
+  .summary-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+  .summary-row-label { font-size: 11px; color: var(--text3); }
+  .summary-row-val { font-size: 16px; font-weight: 500; }
+  .danger { color: var(--red) !important; }
+
+  /* Chart */
+  .chart-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px 12px;
+    margin-bottom: 8px;
+  }
+  .chart-title { font-size: 13px; font-weight: 500; margin-bottom: 10px; }
+  .chart-legend { display: flex; gap: 16px; margin-bottom: 14px; font-size: 11px; color: var(--text2); justify-content: center; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .legend-line { width: 18px; height: 2px; border-radius: 1px; display: inline-block; }
+  svg { overflow: visible; }
+
+  /* Day cards */
+  .day-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .day-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 10px 8px;
+  }
+  .day-card.over { border-color: var(--red); }
+  .day-name { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .day-total { font-size: 17px; font-weight: 500; }
+  .day-total.over { color: var(--red); }
+  .day-detail { font-size: 10px; color: var(--text3); margin-top: 1px; }
+  .day-ratio { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .day-delta { font-size: 10px; font-weight: 500; margin-top: 2px; }
+  .day-bar-bg { margin-top: 6px; height: 4px; border-radius: 2px; background: var(--bg2); overflow: hidden; }
+  .day-bar-fill { height: 100%; border-radius: 2px; }
+  .day-status { font-size: 10px; margin-top: 5px; }
+  .day-status.over { color: var(--red); }
+  .day-status.ok   { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+const SHORT = ["Mon","Tue","Wed","Thu","Fri"];
+const CHART_H = 200;
+const STAFF_COLOR = "#185FA5";
+const OVER_COLOR = "#E24B4A";
+const HOLIDAYS = new Set(["1/1/2026","1/19/2026","2/16/2026"]);
+
+const RAW_ALL = [
+  ["1/1/2026",5,91,null,1,60,1,20,null,6,39,null,2,2,2,2,null],
+  ["1/2/2026",92,385,12,34,575,61,70,null,38,313,4,45,32,53,46,5],
+  ["1/5/2026",359,1449,62,95,2001,206,100,null,106,999,26,169,101,290,222,14],
+  ["1/6/2026",594,1493,182,110,2605,308,197,null,175,1553,55,249,201,343,376,21],
+  ["1/7/2026",737,1669,133,129,2771,332,226,null,178,1584,36,238,180,246,361,16],
+  ["1/8/2026",618,1550,187,102,2543,368,197,null,103,1477,57,268,181,372,361,14],
+  ["1/9/2026",328,1315,35,72,1650,194,96,null,111,798,11,196,99,123,203,12],
+  ["1/12/2026",405,1720,78,91,2355,263,209,null,111,1059,18,227,99,329,320,15],
+  ["1/13/2026",717,1746,215,130,2936,392,481,null,179,1616,90,259,229,357,440,23],
+  ["1/14/2026",810,1663,165,144,2922,359,495,null,169,1655,53,273,206,206,408,19],
+  ["1/15/2026",624,1277,234,127,2638,382,468,null,153,1536,84,290,215,387,109,19],
+  ["1/16/2026",332,1386,60,70,1645,188,181,null,102,707,18,212,93,125,216,16],
+  ["1/19/2026",47,1756,88,19,183,13,60,null,20,107,28,6,30,297,319,null],
+  ["1/20/2026",568,1815,203,117,2854,319,442,null,157,1527,93,251,268,335,409,17],
+  ["1/21/2026",776,1866,131,156,3231,395,515,null,179,1696,56,224,303,247,344,19],
+  ["1/22/2026",654,1690,187,126,2917,399,480,null,175,1603,88,278,270,356,390,18],
+  ["1/23/2026",345,1280,61,80,1834,192,124,null,100,867,16,216,97,111,192,11],
+  ["1/26/2026",108,140,69,102,2332,40,20,null,102,1046,null,205,102,282,83,null],
+  ["1/27/2026",661,1704,186,135,3031,241,42,null,169,1661,85,230,201,373,427,7],
+  ["1/28/2026",799,1914,179,143,3092,345,90,null,171,1744,49,191,171,300,390,12],
+  ["1/29/2026",719,1770,233,100,2756,397,281,null,153,1601,95,286,180,345,384,19],
+  ["1/30/2026",346,1455,41,77,1711,171,247,null,98,768,16,155,97,100,185,9],
+  ["2/2/2026",346,1655,68,86,2416,225,266,null,99,1053,25,181,105,302,248,16],
+  ["2/3/2026",696,1732,200,134,2952,355,524,null,154,1627,82,224,194,330,428,25],
+  ["2/4/2026",769,1856,142,153,3083,381,550,null,179,1652,56,198,167,238,392,20],
+  ["2/5/2026",650,1650,177,120,2702,383,438,null,153,1615,91,193,169,363,369,22],
+  ["2/6/2026",375,1275,52,66,1759,210,210,null,90,765,12,146,93,106,178,14],
+  ["2/9/2026",418,1630,85,93,2441,209,218,null,95,1046,34,161,93,311,207,16],
+  ["2/10/2026",737,1763,208,131,2945,322,466,null,160,1508,96,210,195,322,462,23],
+  ["2/11/2026",842,1821,150,140,2905,350,463,null,160,1626,68,217,190,223,405,17],
+  ["2/12/2026",722,1655,187,107,2662,362,446,null,154,1507,96,193,205,355,318,21],
+  ["2/13/2026",349,1331,49,58,1523,153,193,null,89,672,15,128,84,96,182,15],
+  ["2/16/2026",51,1492,87,15,143,8,72,null,20,63,26,9,20,303,5,2],
+  ["2/17/2026",566,1718,181,128,2303,283,439,null,67,1325,83,142,171,334,405,25],
+  ["2/18/2026",685,1770,130,145,2963,340,491,null,84,1540,63,177,197,262,186,21],
+  ["2/19/2026",640,1573,175,128,2574,379,493,null,88,1480,82,187,194,364,369,19],
+  ["2/20/2026",328,1231,45,82,1703,174,203,null,70,767,19,142,88,142,231,12],
+  ["2/23/2026",363,1557,77,82,2510,16,221,null,115,1018,26,170,102,319,258,8],
+  ["2/24/2026",666,1639,190,127,3095,201,437,null,170,1560,81,214,202,319,410,19],
+  ["2/25/2026",798,1787,135,141,3330,285,462,null,180,1621,40,208,195,243,361,18],
+  ["2/26/2026",633,1516,183,106,2784,355,437,null,142,1437,83,163,160,366,329,22],
+  ["2/27/2026",324,1173,38,66,1731,187,197,null,103,746,12,154,75,95,207,12],
+  ["3/2/2026",371,143,131,94,2374,194,219,null,118,990,20,179,90,6,233,15],
+  ["3/3/2026",748,1513,195,163,3230,402,535,null,197,1822,84,175,224,11,483,21],
+  ["3/4/2026",734,1409,210,117,2929,341,503,null,162,1615,76,189,175,9,425,23],
+  ["3/5/2026",600,1602,133,104,2678,342,446,null,155,1480,73,218,171,10,352,21],
+  ["3/6/2026",346,1252,73,66,1621,181,198,null,91,712,21,157,89,9,182,10],
+  ["3/9/2026",367,1607,82,90,2238,244,242,null,101,969,30,154,94,13,203,9],
+  ["3/10/2026",704,1680,181,137,2789,378,482,null,154,1693,94,199,193,15,409,15],
+  ["3/11/2026",780,1696,107,136,2865,386,516,null,167,1700,62,179,207,10,391,14],
+  ["3/12/2026",625,1580,168,105,2659,385,494,null,153,1527,90,217,162,12,343,20],
+  ["3/13/2026",343,1362,38,88,1671,189,222,25,102,728,16,155,38,11,176,11],
+  ["3/16/2026",371,1725,66,97,2326,182,232,30,97,1047,28,176,87,16,223,23],
+  ["3/17/2026",793,1757,160,152,2846,348,412,51,160,1607,96,207,184,22,365,34],
+  ["3/18/2026",906,1755,128,151,2852,336,438,40,163,1654,60,240,180,13,358,30],
+  ["3/19/2026",720,157,162,139,2499,383,382,3,142,1442,85,191,169,17,353,26],
+  ["3/20/2026",360,966,42,77,1632,189,188,25,87,715,21,172,30,13,157,8],
+  ["3/23/2026",380,1618,74,89,2331,208,243,65,93,957,22,209,98,8,222,14],
+  ["3/24/2026",712,1743,180,147,2874,387,463,61,156,1531,83,208,199,16,411,19],
+  ["3/25/2026",748,1834,131,142,2924,387,495,57,153,1591,62,198,189,21,398,21],
+  ["3/26/2026",635,1612,165,116,2645,387,468,43,146,1353,89,230,178,19,354,19],
+  ["3/27/2026",350,1313,58,70,1727,216,228,28,85,726,15,150,93,12,189,8],
+  ["3/30/2026",448,1603,55,99,2363,233,239,43,104,989,31,167,93,17,233,11],
+  ["3/31/2026",728,1809,163,135,2849,374,466,47,152,1491,98,186,189,21,396,17],
+  ["4/1/2026",779,1788,103,148,2988,361,502,39,147,1529,74,186,192,21,383,15],
+];
+
+const RAW_ASSIGN = [
+  ["1/1/2026",4,84,null,1,51,0,19,null,5,36,null,1,2,1,2,null],
+  ["1/2/2026",84,331,9,32,522,44,63,null,35,285,2,16,25,47,41,3],
+  ["1/5/2026",337,1297,41,88,1878,168,89,null,98,943,24,63,90,280,198,13],
+  ["1/6/2026",558,1306,122,103,2438,269,178,null,164,1465,52,96,182,328,342,20],
+  ["1/7/2026",691,1445,89,123,2600,287,204,null,165,1479,35,89,166,234,328,15],
+  ["1/8/2026",587,1353,117,95,2386,330,175,null,96,1379,56,90,165,357,324,13],
+  ["1/9/2026",306,1168,22,67,1546,166,85,null,105,760,10,58,88,113,182,11],
+  ["1/12/2026",371,1518,52,82,2183,215,184,null,102,989,16,75,87,313,283,12],
+  ["1/13/2026",626,1512,131,120,2690,330,433,null,170,1478,83,102,189,342,389,21],
+  ["1/14/2026",714,1467,103,135,2677,301,447,null,160,1517,51,101,176,191,364,18],
+  ["1/15/2026",573,1123,138,113,2435,325,424,null,141,1399,78,88,180,366,90,16],
+  ["1/16/2026",315,1249,43,67,1507,149,162,null,92,648,17,58,83,117,197,13],
+  ["1/19/2026",43,1562,60,19,162,13,57,null,17,93,27,3,18,281,290,null],
+  ["1/20/2026",523,1591,119,110,2622,275,402,null,140,1411,88,92,178,323,366,16],
+  ["1/21/2026",709,1624,82,142,2884,338,468,null,165,1550,54,91,187,239,313,18],
+  ["1/22/2026",600,1475,109,112,2617,342,436,null,158,1477,84,89,198,344,356,17],
+  ["1/23/2026",318,1123,42,76,1672,164,113,null,88,794,15,57,85,102,175,11],
+  ["1/26/2026",97,123,50,92,2159,28,20,null,93,960,null,75,93,273,76,null],
+  ["1/27/2026",603,1487,108,119,2722,211,38,null,156,1492,80,97,184,359,386,6],
+  ["1/28/2026",727,1654,108,130,2743,307,79,null,158,1547,47,81,161,289,347,11],
+  ["1/29/2026",661,1536,135,95,2478,354,262,null,140,1427,89,108,164,332,347,16],
+  ["1/30/2026",329,1296,29,74,1565,146,227,null,88,711,14,53,86,93,171,8],
+  ["2/2/2026",322,1462,51,78,2212,191,241,null,94,989,23,72,94,292,220,15],
+  ["2/3/2026",612,1514,120,126,2681,305,458,null,147,1490,78,103,179,319,380,20],
+  ["2/4/2026",686,1598,89,137,2782,326,479,null,166,1505,54,85,153,229,350,15],
+  ["2/5/2026",579,1431,112,113,2396,340,403,null,142,1474,85,78,156,352,322,18],
+  ["2/6/2026",347,1124,40,60,1592,179,194,null,86,704,10,51,82,101,155,14],
+  ["2/9/2026",343,1433,57,84,2222,183,194,null,86,962,29,78,76,301,183,16],
+  ["2/10/2026",610,1515,121,118,2630,292,422,null,150,1384,89,94,170,312,410,22],
+  ["2/11/2026",695,1531,92,130,2587,301,426,null,147,1473,63,102,163,214,366,16],
+  ["2/12/2026",592,1433,107,95,2398,319,420,null,140,1350,90,81,162,343,292,20],
+  ["2/13/2026",279,1165,34,55,1376,129,178,null,80,616,13,47,76,90,166,15],
+  ["2/16/2026",46,1305,58,15,112,8,62,null,19,60,21,1,15,291,5,2],
+  ["2/17/2026",528,1493,102,117,2106,248,396,null,61,1231,75,73,153,319,366,22],
+  ["2/18/2026",632,1520,73,134,2683,292,440,null,75,1409,58,84,172,251,160,18],
+  ["2/19/2026",588,1355,100,116,2313,338,451,null,79,1339,76,74,174,348,327,18],
+  ["2/20/2026",296,1071,29,75,1535,149,184,null,61,718,17,49,78,131,211,11],
+  ["2/23/2026",335,1362,50,74,2210,11,195,null,107,942,25,73,91,306,231,8],
+  ["2/24/2026",598,1405,114,119,2652,174,397,null,156,1428,76,94,176,309,367,17],
+  ["2/25/2026",697,1528,84,133,2838,253,421,null,163,1471,39,100,164,236,331,17],
+  ["2/26/2026",547,1289,106,97,2408,318,393,null,128,1328,79,65,141,354,298,20],
+  ["2/27/2026",302,1021,27,62,1542,161,177,null,91,698,11,50,67,90,192,11],
+  ["3/2/2026",332,127,81,85,2136,160,195,null,108,910,18,70,82,4,206,13],
+  ["3/3/2026",663,1327,110,148,2873,357,459,null,180,1674,79,86,189,9,437,20],
+  ["3/4/2026",662,1194,125,110,2611,294,429,null,143,1449,71,96,160,7,376,22],
+  ["3/5/2026",557,1403,75,95,2395,300,375,null,139,1342,69,85,158,7,307,20],
+  ["3/6/2026",327,1105,38,61,1468,159,157,null,80,658,20,45,80,7,159,10],
+  ["3/9/2026",334,1421,53,81,2059,194,191,null,92,893,28,56,81,11,187,9],
+  ["3/10/2026",618,1457,111,129,2547,308,403,null,141,1536,90,88,166,13,366,14],
+  ["3/11/2026",687,1458,66,129,2597,321,429,null,152,1515,59,71,175,8,347,12],
+  ["3/12/2026",561,1232,100,92,2193,325,379,null,131,1294,85,81,131,10,295,19],
+  ["3/13/2026",313,1052,18,70,1334,154,144,24,84,603,14,42,26,9,150,10],
+  ["3/16/2026",303,1379,42,80,1938,151,160,26,83,889,27,62,61,13,190,14],
+  ["3/17/2026",625,1410,87,131,2363,299,326,47,139,1407,85,85,148,20,318,22],
+  ["3/18/2026",709,1402,75,127,2365,285,352,37,143,1436,56,95,143,11,314,21],
+  ["3/19/2026",574,45,95,114,2056,322,304,1,122,1259,77,67,136,15,308,21],
+  ["3/20/2026",325,730,26,61,1282,162,132,23,72,597,18,49,17,11,131,7],
+  ["3/23/2026",331,1304,46,74,1923,173,182,51,78,827,21,66,70,6,192,11],
+  ["3/24/2026",616,1383,100,125,2368,328,378,51,133,1338,80,69,171,13,358,17],
+  ["3/25/2026",651,1442,75,125,2402,329,410,47,133,1399,61,69,152,17,345,18],
+  ["3/26/2026",567,1229,90,99,2159,335,379,36,122,1188,86,77,146,17,310,17],
+  ["3/27/2026",318,1014,34,57,1381,177,165,25,71,618,13,46,68,10,158,5],
+  ["3/30/2026",381,1246,32,78,1982,193,173,39,89,853,27,60,70,15,203,8],
+  ["3/31/2026",616,1419,88,106,2394,323,380,44,131,1312,88,74,155,18,343,15],
+  ["4/1/2026",657,1408,51,126,2506,314,411,36,131,1347,64,69,155,19,319,10],
+];
+
+const SITE_COLS = ["ATL","BAN","LON","LOS","MTV","NYC","PLN","PUN","RNO","SDG","SDY","SFO","TCS","TLV","TOR","WDC"];
+
+const OFFICES = [
+  { site:"ATL", seats:915,  swp:56, headcount:1069 },
+  { site:"BAN", seats:1879, swp:44, headcount:2562 },
+  { site:"LON", seats:256,  swp:0,  headcount:198  },
+  { site:"LOS", seats:296,  swp:0,  headcount:238  },
+  { site:"MTV", seats:3123, swp:89, headcount:4419 },
+  { site:"NYC", seats:348,  swp:36, headcount:587  },
+  { site:"PLN", seats:765,  swp:0,  headcount:664  },
+  { site:"PUN", seats:63,   swp:0,  headcount:51   },
+  { site:"RNO", seats:235,  swp:0,  headcount:234  },
+  { site:"SDG", seats:2355, swp:6,  headcount:2247 },
+  { site:"SDY", seats:94,   swp:24, headcount:130  },
+  { site:"SFO", seats:131,  swp:44, headcount:222  },
+  { site:"TCS", seats:566,  swp:0,  headcount:272  },
+  { site:"TLV", seats:513,  swp:0,  headcount:569  },
+  { site:"TOR", seats:458,  swp:30, headcount:757  },
+  { site:"WDC", seats:23,   swp:5,  headcount:26   },
+];
+
+// ── computation helpers ──────────────────────────────────────────────────────
+
+function getDow(dateStr) {
+  const [m,d,y] = dateStr.split("/").map(Number);
+  return new Date(y,m-1,d).getDay();
+}
+function arrAvg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+
+function parseDate(str) {
+  const [m,d,y] = str.split("/").map(Number);
+  return new Date(y, m-1, d).getTime();
+}
+
+// All available dates as timestamps for the range picker bounds
+const ALL_DATES = RAW_ALL.map(r => r[0]);
+const DATE_MIN = ALL_DATES[0];
+const DATE_MAX = ALL_DATES[ALL_DATES.length - 1];
+
+function toInputDate(dateStr) {
+  const [m,d,y] = dateStr.split("/").map(Number);
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function fromInputDate(str) {
+  const [y,m,d] = str.split("-").map(Number);
+  return `${m}/${d}/${y}`;
+}
+
+function computeSiteStats(siteIdx, hc, fromTs, toTs) {
+  const byAll = [[],[],[],[],[]];
+  const byAsg = [[],[],[],[],[]];
+  const mwAll = [], mwAsg = [];
+  RAW_ALL.forEach((row, ri) => {
+    if (HOLIDAYS.has(row[0])) return;
+    const ts = parseDate(row[0]);
+    if (ts < fromTs || ts > toTs) return;
+    const dow = getDow(row[0]);
+    if (dow < 1 || dow > 5) return;
+    const all = row[siteIdx+1];
+    const asg = RAW_ASSIGN[ri]?.[siteIdx+1];
+    if (all != null && all > 0) { byAll[dow-1].push(all); if (dow>=2&&dow<=4) mwAll.push(all); }
+    if (asg != null && asg > 0) { byAsg[dow-1].push(asg); if (dow>=2&&dow<=4) mwAsg.push(asg); }
+  });
+  const avgs  = byAll.map(arrAvg);
+  const aavgs = byAsg.map(arrAvg);
+  const mean  = avgs.reduce((a,b)=>a+b,0)/5;
+  const dist  = avgs.map(v => mean > 0 ? v/mean : 1);
+  const mwA   = arrAvg(mwAll);
+  const mwB   = arrAvg(mwAsg);
+  const visitorFraction = mwA > 0 ? Math.max(0,(mwA-mwB)/mwA) : 0;
+  const avgDaysOnSite   = aavgs.reduce((s,v) => s + v/hc, 0);
+  return { dist, showUp: Math.round(mwA/hc*100), showUpAssign: Math.round(mwB/hc*100), visitorFraction, avgDaysOnSite };
+}
+
+const FULL_FROM_TS = parseDate(DATE_MIN);
+const FULL_TO_TS   = parseDate(DATE_MAX);
+
+const SITE_STATS = {};
+SITE_COLS.forEach((site, i) => {
+  const hc = OFFICES.find(o=>o.site===site)?.headcount ?? 1;
+  SITE_STATS[site] = computeSiteStats(i, hc, FULL_FROM_TS, FULL_TO_TS);
+});
+
+function getStatsForRange(site, fromTs, toTs) {
+  const i = SITE_COLS.indexOf(site);
+  const hc = OFFICES.find(o=>o.site===site)?.headcount ?? 1;
+  return computeSiteStats(i, hc, fromTs, toTs);
+}
+
+function getWeights(t, dist) { return dist.map(v => v + t*(1-v)); }
+
+function getDist(midweekAvg, total, skew, siteDist) {
+  const t = (skew-1)/8;
+  const w = getWeights(t, siteDist);
+  const wSum = w.reduce((a,b)=>a+b,0);
+  const mwDaily = (w[1]+w[2]+w[3])/3;
+  const weeklyTotal = (midweekAvg/100*total)*(wSum/mwDaily);
+  return w.map(wi => Math.round(wi/wSum*weeklyTotal));
+}
+
+// ── date formatting ──────────────────────────────────────────────────────────
+const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+function fmtDate(str) {
+  const [m,,y] = str.split("/").map(Number);
+  return `${MONTHS[m-1]} ${y}`;
+}
+const DATE_RANGE = `${fmtDate(RAW_ALL[0][0])} – ${fmtDate(RAW_ALL[RAW_ALL.length-1][0])}`;
+
+// ── state ────────────────────────────────────────────────────────────────────
+let state = (() => {
+  const site = "NYC";
+  const o = OFFICES.find(o=>o.site===site);
+  const s = SITE_STATS[site];
+  return {
+    selectedSite: site,
+    midweekAvg: s.showUp,
+    headcount: o.headcount,
+    seats: o.seats,
+    visitorFraction: s.visitorFraction,
+    coffeeBadger: 0,
+    skew: 1,
+    includeVisitors: true,
+    includeSWP: false,
+    threeDayScenario: false,
+    weeklyTotal: null,
+    dateFrom: DATE_MIN,
+    dateTo: DATE_MAX,
+  };
+})();
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function getWeeklyTotal(mwAvg, hc, sk, dist) {
+  const w = getWeights((sk-1)/8, dist);
+  const wSum = w.reduce((a,b)=>a+b,0);
+  const mwDaily = (w[1]+w[2]+w[3])/3;
+  return (mwAvg/100*hc)*(wSum/mwDaily);
+}
+
+function compute() {
+  const { selectedSite, midweekAvg, headcount, seats, visitorFraction,
+          coffeeBadger, skew, includeVisitors, includeSWP, threeDayScenario,
+          dateFrom, dateTo } = state;
+  const fromTs = parseDate(dateFrom);
+  const toTs   = parseDate(dateTo);
+  const ss = getStatsForRange(selectedSite, fromTs, toTs);
+  const siteDist = ss.dist;
+  const curOffice = OFFICES.find(o=>o.site===selectedSite);
+  const effectiveSeats = includeSWP ? seats + (curOffice.swp||0) : seats;
+  const avgDaysOnSite = ss.avgDaysOnSite;
+  const scenarioScale = threeDayScenario ? 3/Math.max(avgDaysOnSite, 0.1) : 1;
+
+  const actualDist = getDist(includeVisitors ? ss.showUp : ss.showUpAssign, headcount, 1, siteDist);
+  const dist = getDist(midweekAvg, headcount, skew, siteDist);
+
+  const seatDemand = dist.map((v, i) => {
+    const totalWithVis = Math.round(v * (1 - coffeeBadger/100));
+    const staffOnly    = includeVisitors ? Math.round(totalWithVis * (1 - visitorFraction)) : totalWithVis;
+    const scaledStaff  = Math.round(staffOnly * scenarioScale);
+    const visitors     = includeVisitors ? Math.round(totalWithVis * visitorFraction) : 0;
+    const total        = scaledStaff + visitors;
+    const actWithVis   = Math.round(actualDist[i] * (1 - coffeeBadger/100));
+    const actStaff     = includeVisitors ? Math.round(actWithVis * (1 - visitorFraction)) : actWithVis;
+    const actualTotal  = includeVisitors ? actWithVis : actStaff;
+    const delta        = total - actualTotal;
+    const over         = total - effectiveSeats;
+    return { staff:scaledStaff, visitors, total, delta, over };
+  });
+
+  const peakVal        = Math.max(...seatDemand.map(d=>d.total));
+  const avgDay         = Math.round(seatDemand.reduce((a,b)=>a+b.total,0)/5);
+  const mwAvgPeople    = Math.round((seatDemand[1].total+seatDemand[2].total+seatDemand[3].total)/3);
+  const mwUtilization  = Math.round(mwAvgPeople/effectiveSeats*100);
+  const avgUtilization = Math.round(avgDay/effectiveSeats*100);
+  const yMax           = Math.max(headcount, peakVal, effectiveSeats);
+
+  const mwAvgScaled = threeDayScenario
+    ? Math.round(((dist[1]+dist[2]+dist[3])/3)*(1-visitorFraction)*(1-coffeeBadger/100)*scenarioScale/headcount*100)
+    : null;
+
+  return { siteDist, dist, seatDemand, effectiveSeats, peakVal, avgDay,
+           mwAvgPeople, mwUtilization, avgUtilization, yMax, mwAvgScaled,
+           avgDaysOnSite, curOffice, ss };
+}
+
+// ── render ────────────────────────────────────────────────────────────────────
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  if (attrs) Object.entries(attrs).forEach(([k,v]) => {
+    if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el.setAttribute(k, v);
+  });
+  children.flat(Infinity).forEach(c => {
+    if (c == null) return;
+    el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  });
+  return el;
+}
+
+function makeNumInput({ value, onChange, min, max, unit }) {
+  const input = h('input', { type:'number', value, min, max, class:'spin-input' });
+  input.addEventListener('input', () => onChange(Math.min(max, Math.max(min, Number(input.value)))));
+  const unitEl = unit ? h('span', { class:'num-unit' }, unit) : null;
+  const up = h('button', { class:'spin-btn', onclick: () => { const nv=Math.min(max,value+1); input.value=nv; onChange(nv); } }, '▲');
+  const dn = h('button', { class:'spin-btn', onclick: () => { const nv=Math.max(min,value-1); input.value=nv; onChange(nv); } }, '▼');
+  return h('div', { class:'num-input' }, input, unitEl, h('div', { class:'spin-btns' }, up, dn));
+}
+
+// Builds the chart SVG, summary cards, day cards and injects into existing containers
+function updateOutput() {
+  const { siteDist, dist, seatDemand, effectiveSeats, peakVal, avgDay,
+          mwAvgPeople, mwUtilization, avgUtilization, yMax, mwAvgScaled,
+          avgDaysOnSite, curOffice, ss } = compute();
+  const { selectedSite, midweekAvg, headcount, seats, visitorFraction,
+          coffeeBadger, skew, includeVisitors, includeSWP } = state;
+  const visitorPct = Math.round(visitorFraction * 100);
+
+  // meta line
+  const metaEl = document.getElementById('meta-line');
+  if (metaEl) metaEl.textContent = `${headcount} Employees · ${seats} Seats${includeSWP && curOffice.swp ? ` +${curOffice.swp} SWP` : ''} · +${visitorPct}% Visitor Impact · ${coffeeBadger}% Coffee Badgers · ${avgDaysOnSite.toFixed(2)} Avg Days/Week`;
+
+  // summary cards
+  const summaryEl = document.getElementById('summary-grid');
+  if (summaryEl) {
+    summaryEl.innerHTML = '';
+    const peakCard = h('div', { class:'summary-card' },
+      h('div', { class:'summary-title' }, 'Peak day'),
+      h('div', { class:'summary-big' }, `${peakVal}`, h('span', {}, ' ppl'))
+    );
+    const badgeCard = h('div', { class:'summary-card' },
+      h('div', { class:'summary-title' }, 'Badge Count'),
+      h('div', { class:'summary-rows' },
+        h('div', { class:'summary-row' }, h('span', { class:'summary-row-label' }, 'Daily avg'), h('span', { class:'summary-row-val' }, `${avgDay}`)),
+        h('div', { class:'summary-row' }, h('span', { class:'summary-row-label' }, 'Midweek avg'), h('span', { class:'summary-row-val' }, `${mwAvgPeople}`))
+      )
+    );
+    const utilCard = h('div', { class:'summary-card' },
+      h('div', { class:'summary-title' }, 'Seat utilization'),
+      h('div', { class:'summary-rows' },
+        h('div', { class:'summary-row' }, h('span', { class:'summary-row-label' }, 'Daily avg'), h('span', { class:'summary-row-val' }, `${avgUtilization}%`)),
+        h('div', { class:'summary-row' }, h('span', { class:'summary-row-label' }, 'Midweek avg'), h('span', { class:'summary-row-val' + (mwUtilization>100?' danger':'') }, `${mwUtilization}%`))
+      )
+    );
+    summaryEl.appendChild(peakCard);
+    summaryEl.appendChild(badgeCard);
+    summaryEl.appendChild(utilCard);
+  }
+
+  // chart
+  const chartContainer = document.getElementById('chart-svg-container');
+  if (chartContainer) {
+    chartContainer.innerHTML = '';
+    // update seat count in legend
+    const legendSeat = document.getElementById('legend-seats');
+    if (legendSeat) legendSeat.textContent = `${effectiveSeats} seats`;
+
+    const toY = val => CHART_H - (val/yMax)*CHART_H;
+    const staticGrid = [0, Math.round(yMax*.25), Math.round(yMax*.5), Math.round(yMax*.75), yMax];
+    const minGap = yMax*0.08;
+    const filteredGrid = staticGrid.filter(v=>v===0||v===yMax||Math.abs(v-effectiveSeats)>minGap);
+    const gridLines = [...new Set([...filteredGrid, effectiveSeats])].sort((a,b)=>a-b);
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS,'svg');
+    svg.setAttribute('width','100%');
+    svg.setAttribute('viewBox',`0 0 500 ${CHART_H+30}`);
+    svg.style.overflow = 'visible';
+    const mkSvg = (tag, attrs) => {
+      const el = document.createElementNS(svgNS, tag);
+      Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
+      return el;
+    };
+    gridLines.forEach(v => {
+      const y = toY(v), isSeat = v === effectiveSeats;
+      svg.appendChild(mkSvg('line', { x1:36, x2:500, y1:y, y2:y,
+        stroke: isSeat ? OVER_COLOR : 'rgba(136,135,128,0.2)',
+        'stroke-width': isSeat ? 1.5 : 0.5, 'stroke-dasharray': isSeat ? '5,4' : '0' }));
+      const t = mkSvg('text', { x:32, y, 'text-anchor':'end', 'dominant-baseline':'middle',
+        'font-size':10, fill: isSeat ? OVER_COLOR : 'var(--text3)', 'font-weight': isSeat ? 500 : 400 });
+      t.textContent = v;
+      svg.appendChild(t);
+    });
+    seatDemand.forEach(({ total, over, staff, visitors }, i) => {
+      const barTop = toY(total), barH = CHART_H - barTop;
+      const colW = 72, x = 44 + i*90;
+      const staffH = Math.round((staff/Math.max(yMax,1))*CHART_H);
+      const visitorH = barH - staffH;
+      const barColor = over>0 ? OVER_COLOR : STAFF_COLOR;
+      svg.appendChild(mkSvg('rect', { x, y:barTop+visitorH, width:colW, height:staffH, fill:barColor, rx:0 }));
+      if (visitorH > 0)
+        svg.appendChild(mkSvg('rect', { x, y:barTop, width:colW, height:visitorH, fill:barColor, rx:0, opacity:0.4 }));
+      if (over > 0)
+        svg.appendChild(mkSvg('line', { x1:x, x2:x+colW, y1:toY(effectiveSeats), y2:toY(effectiveSeats),
+          stroke:'rgba(255,255,255,0.7)', 'stroke-width':2, 'stroke-dasharray':'5,3' }));
+      const topLabel = mkSvg('text', { x:x+colW/2, y:barTop-5, 'text-anchor':'middle',
+        'font-size':11, fill: over>0 ? 'var(--red)' : 'var(--text2)', 'font-weight':500 });
+      topLabel.textContent = total;
+      svg.appendChild(topLabel);
+      if (barH > 30) {
+        const ut = mkSvg('text', { x:x+colW/2, y:barTop+barH-18, 'text-anchor':'middle',
+          'font-size':10, fill:'rgba(255,255,255,0.85)', 'font-weight':500 });
+        ut.textContent = `${Math.round(total/effectiveSeats*100)}%`;
+        svg.appendChild(ut);
+        const utl = mkSvg('text', { x:x+colW/2, y:barTop+barH-7, 'text-anchor':'middle',
+          'font-size':9, fill:'rgba(255,255,255,0.7)' });
+        utl.textContent = 'utilization';
+        svg.appendChild(utl);
+      }
+      const dayL = mkSvg('text', { x:x+colW/2, y:CHART_H+14, 'text-anchor':'middle',
+        'font-size':11, fill:'var(--text2)' });
+      dayL.textContent = SHORT[i];
+      svg.appendChild(dayL);
+    });
+    chartContainer.appendChild(svg);
+  }
+
+  // mini skew chart
+  const miniContainer = document.getElementById('mini-chart');
+  if (miniContainer) {
+    miniContainer.innerHTML = '';
+    const maxDist = Math.max(...dist);
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const miniSvg = document.createElementNS(svgNS,'svg');
+    miniSvg.setAttribute('width','80'); miniSvg.setAttribute('height','36');
+    miniSvg.setAttribute('viewBox','0 0 80 36');
+    dist.forEach((v, i) => {
+      const barH = Math.round((v/maxDist)*28);
+      const rect = document.createElementNS(svgNS,'rect');
+      rect.setAttribute('x', 4+i*15); rect.setAttribute('y', 32-barH);
+      rect.setAttribute('width',11); rect.setAttribute('height',barH);
+      rect.setAttribute('fill', i>=1&&i<=3 ? STAFF_COLOR : '#888780');
+      rect.setAttribute('opacity','0.7'); rect.setAttribute('rx','1.5');
+      miniSvg.appendChild(rect);
+    });
+    miniContainer.appendChild(miniSvg);
+  }
+
+  // tick marker on show-up slider
+  const tickMarker = document.getElementById('tick-marker');
+  const tickWrap = document.getElementById('tick-wrap');
+  if (tickMarker && tickWrap) {
+    if (mwAvgScaled != null) {
+      const pct = ((mwAvgScaled - 34) / (100 - 34)) * 100;
+      tickMarker.style.left = `${pct}%`;
+      tickMarker.style.display = 'flex';
+      tickMarker.querySelector('.tick-label').textContent = `3d: ${mwAvgScaled}%`;
+    } else {
+      tickMarker.style.display = 'none';
+    }
+  }
+
+  // day cards
+  const dayGridEl = document.getElementById('day-grid');
+  if (dayGridEl) {
+    dayGridEl.innerHTML = '';
+    seatDemand.forEach(({ staff, visitors, total, delta, over }, i) => {
+      const card = h('div', { class:'day-card' + (over>0?' over':'') },
+        h('div', { class:'day-name' }, SHORT[i]),
+        h('div', { class:'day-total' + (over>0?' over':'') }, `${total}`),
+        h('div', { class:'day-detail' }, `${staff} staff · ${visitors} visitors`),
+        h('div', { class:'day-ratio' }, `On-Site Share Ratio: ${(total/effectiveSeats).toFixed(2)}`),
+      );
+      if (skew > 1) {
+        card.appendChild(h('div', { class:'day-delta',
+          style:{ color: delta>0 ? 'var(--green)' : delta<0 ? 'var(--red)' : 'var(--text3)' } },
+          `${delta>0?'+':''}${delta} vs actual`));
+      }
+      const barFill = h('div', { class:'day-bar-fill',
+        style:{ width:`${Math.min(total/effectiveSeats,1)*100}%`, background: over>0 ? OVER_COLOR : STAFF_COLOR } });
+      card.appendChild(h('div', { class:'day-bar-bg' }, barFill));
+      card.appendChild(h('div', { class:'day-status ' + (over>0?'over':'ok') },
+        over>0 ? `+${over} overflow` : `${Math.abs(over)} free`));
+      dayGridEl.appendChild(card);
+    });
+  }
+
+  // sync slider display values
+  const sliderSeats = document.getElementById('slider-seats');
+  const sliderHc    = document.getElementById('slider-hc');
+  const sliderMw    = document.getElementById('slider-mw');
+  if (sliderSeats) sliderSeats.value = seats;
+  if (sliderHc)    sliderHc.value    = headcount;
+  if (sliderMw)    sliderMw.value    = midweekAvg;
+
+  const niSeats = document.getElementById('ni-seats');
+  const niHc    = document.getElementById('ni-hc');
+  const niMw    = document.getElementById('ni-mw');
+  if (niSeats) niSeats.value = seats;
+  if (niHc)    niHc.value    = headcount;
+  if (niMw)    niMw.value    = midweekAvg;
+}
+
+function render() {
+  const { siteDist, dist, seatDemand, effectiveSeats, peakVal, avgDay,
+          mwAvgPeople, mwUtilization, avgUtilization, yMax, mwAvgScaled,
+          avgDaysOnSite, curOffice, ss } = compute();
+  const { selectedSite, midweekAvg, headcount, seats, visitorFraction,
+          coffeeBadger, skew, includeVisitors, includeSWP, threeDayScenario,
+          dateFrom, dateTo } = state;
+  const visitorPct = Math.round(visitorFraction * 100);
+
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  // ── HEADER ──
+  const siteSelect = h('select', {});
+  [...OFFICES].sort((a,b)=>a.site.localeCompare(b.site)).forEach(o => {
+    const opt = h('option', { value: o.site }, o.site);
+    if (o.site === selectedSite) opt.selected = true;
+    siteSelect.appendChild(opt);
+  });
+  siteSelect.addEventListener('change', e => {
+    const site = e.target.value;
+    const o = OFFICES.find(o=>o.site===site);
+    const fromTs = parseDate(state.dateFrom);
+    const toTs   = parseDate(state.dateTo);
+    const s = getStatsForRange(site, fromTs, toTs);
+    state.selectedSite = site;
+    state.midweekAvg = state.includeVisitors ? s.showUp : s.showUpAssign;
+    state.headcount = o.headcount;
+    state.seats = o.seats;
+    state.visitorFraction = s.visitorFraction;
+    state.coffeeBadger = 0;
+    state.skew = 1;
+    state.includeSWP = false;
+    state.weeklyTotal = null;
+    render();
+  });
+
+  const cbVisitors = h('input', { type:'checkbox' });
+  cbVisitors.checked = includeVisitors;
+  cbVisitors.addEventListener('change', () => {
+    const val = cbVisitors.checked;
+    state.includeVisitors = val;
+    state.midweekAvg = val ? ss.showUp : ss.showUpAssign;
+    state.weeklyTotal = null;
+    render();
+  });
+
+  const cbSWP = h('input', { type:'checkbox' });
+  cbSWP.checked = includeSWP;
+  cbSWP.addEventListener('change', () => { state.includeSWP = cbSWP.checked; render(); });
+
+  const cbThree = h('input', { type:'checkbox' });
+  cbThree.checked = threeDayScenario;
+  cbThree.addEventListener('change', () => { state.threeDayScenario = cbThree.checked; render(); });
+
+  const inputFrom = h('input', { type:'date', value: toInputDate(dateFrom),
+    min: toInputDate(DATE_MIN), max: toInputDate(dateTo) });
+  const inputTo   = h('input', { type:'date', value: toInputDate(dateTo),
+    min: toInputDate(dateFrom), max: toInputDate(DATE_MAX) });
+
+  function applyDateRange() {
+    const newFrom = fromInputDate(inputFrom.value);
+    const newTo   = fromInputDate(inputTo.value);
+    const fromTs  = parseDate(newFrom);
+    const toTs    = parseDate(newTo);
+    const s = getStatsForRange(selectedSite, fromTs, toTs);
+    state.dateFrom = newFrom;
+    state.dateTo   = newTo;
+    state.midweekAvg = state.includeVisitors ? s.showUp : s.showUpAssign;
+    state.visitorFraction = s.visitorFraction;
+    state.weeklyTotal = null;
+    render();
+  }
+  inputFrom.addEventListener('change', applyDateRange);
+  inputTo.addEventListener('change', applyDateRange);
+
+  const resetBtn = h('button', { class:'date-reset' }, 'Reset');
+  resetBtn.addEventListener('click', () => {
+    const o = OFFICES.find(o=>o.site===selectedSite);
+    const s = getStatsForRange(selectedSite, FULL_FROM_TS, FULL_TO_TS);
+    state.dateFrom = DATE_MIN;
+    state.dateTo   = DATE_MAX;
+    state.midweekAvg = state.includeVisitors ? s.showUp : s.showUpAssign;
+    state.visitorFraction = s.visitorFraction;
+    state.headcount = o.headcount;
+    state.seats = o.seats;
+    state.coffeeBadger = 0;
+    state.skew = 1;
+    state.weeklyTotal = null;
+    render();
+  });
+
+  const header = h('div', { class:'header' },
+    h('div', { class:'header-top' },
+      h('div', {},
+        h('h2', {}, 'Daily Demand Calculator'),
+      ),
+      siteSelect,
+      h('div', { class:'date-picker' },
+        h('label', {}, 'From'),
+        inputFrom,
+        h('label', {}, 'To'),
+        inputTo,
+        resetBtn,
+      ),
+    ),
+    h('div', { class:'meta', style:{ marginTop:'5px' } },
+      h('span', { id:'meta-line' }, `${headcount} Employees · ${seats} Seats${includeSWP && curOffice.swp ? ` +${curOffice.swp} SWP` : ''} · +${visitorPct}% Visitor Impact · ${coffeeBadger}% Coffee Badgers · ${avgDaysOnSite.toFixed(2)} Avg Days/Week`),
+      h('div', { class:'checkboxes' },
+        h('label', { class:'cb' }, cbVisitors, 'Include Visitors'),
+        h('label', { class: 'cb' + (curOffice.swp > 0 ? '' : ' hidden') }, cbSWP, 'Include SWP'),
+        h('label', { class:'cb' }, cbThree, '3 Days/Week Scenario'),
+      )
+    )
+  );
+
+  // ── SLIDERS PANEL ──
+  // Seat supply slider
+  const sliderSeats = h('input', { type:'range', id:'slider-seats', min:50, max:5000, step:'1', value:seats });
+  sliderSeats.addEventListener('input', () => { state.seats = Number(sliderSeats.value); updateOutput(); });
+  sliderSeats.addEventListener('dblclick', () => { state.seats = curOffice.seats; updateOutput(); });
+  const niSeatsEl = h('input', { type:'number', id:'ni-seats', value:seats, min:50, max:5000, class:'spin-input' });
+  niSeatsEl.addEventListener('change', () => { state.seats = Math.min(5000, Math.max(50, Number(niSeatsEl.value))); updateOutput(); });
+  const niSeats = h('div', { class:'num-input' }, niSeatsEl,
+    h('div', { class:'spin-btns' },
+      h('button', { class:'spin-btn', onclick: () => { state.seats = Math.min(5000, state.seats+1); updateOutput(); } }, '▲'),
+      h('button', { class:'spin-btn', onclick: () => { state.seats = Math.max(50,   state.seats-1); updateOutput(); } }, '▼')
+    )
+  );
+
+  // Headcount slider
+  const sliderHc = h('input', { type:'range', id:'slider-hc', min:100, max:5000, step:'1', value:headcount });
+  sliderHc.addEventListener('input', () => { state.headcount = Number(sliderHc.value); updateOutput(); });
+  sliderHc.addEventListener('dblclick', () => { state.headcount = curOffice.headcount; updateOutput(); });
+  const niHcEl = h('input', { type:'number', id:'ni-hc', value:headcount, min:100, max:5000, class:'spin-input' });
+  niHcEl.addEventListener('change', () => { state.headcount = Math.min(5000, Math.max(100, Number(niHcEl.value))); updateOutput(); });
+  const niHc = h('div', { class:'num-input' }, niHcEl,
+    h('div', { class:'spin-btns' },
+      h('button', { class:'spin-btn', onclick: () => { state.headcount = Math.min(5000, state.headcount+1); updateOutput(); } }, '▲'),
+      h('button', { class:'spin-btn', onclick: () => { state.headcount = Math.max(100,  state.headcount-1); updateOutput(); } }, '▼')
+    )
+  );
+
+  // Midweek show-up slider
+  const sliderMw = h('input', { type:'range', id:'slider-mw', min:34, max:100, step:'1', value:midweekAvg });
+  sliderMw.addEventListener('input', () => { state.weeklyTotal = null; state.midweekAvg = Number(sliderMw.value); updateOutput(); });
+  sliderMw.addEventListener('dblclick', () => { state.weeklyTotal = null; state.midweekAvg = includeVisitors ? ss.showUp : ss.showUpAssign; updateOutput(); });
+  const niMwEl = h('input', { type:'number', id:'ni-mw', value:midweekAvg, min:34, max:100, class:'spin-input' });
+  niMwEl.addEventListener('change', () => { state.weeklyTotal = null; state.midweekAvg = Math.min(100, Math.max(34, Number(niMwEl.value))); updateOutput(); });
+  const niMw = h('div', { class:'num-input' }, niMwEl, h('span', { class:'num-unit' }, '%'),
+    h('div', { class:'spin-btns' },
+      h('button', { class:'spin-btn', onclick: () => { state.weeklyTotal = null; state.midweekAvg = Math.min(100, state.midweekAvg+1); updateOutput(); } }, '▲'),
+      h('button', { class:'spin-btn', onclick: () => { state.weeklyTotal = null; state.midweekAvg = Math.max(34,  state.midweekAvg-1); updateOutput(); } }, '▼')
+    )
+  );
+  // Tick marker for 3-day scenario
+  const tickMarkerEl = h('div', { id:'tick-marker', class:'tick-marker', style:{ display: mwAvgScaled != null ? 'flex' : 'none', left: mwAvgScaled != null ? `${((mwAvgScaled-34)/(100-34))*100}%` : '0%' } },
+    h('div', { class:'tick-line' }),
+    h('span', { class:'tick-label' }, mwAvgScaled != null ? `3d: ${mwAvgScaled}%` : '')
+  );
+  const mwWrap = h('div', { id:'tick-wrap', class:'slider-wrap has-tick' }, sliderMw, tickMarkerEl);
+
+  // Coffee badger num input
+  const niCbEl = h('input', { type:'number', value:coffeeBadger, min:0, max:50, class:'spin-input' });
+  niCbEl.addEventListener('change', () => { state.coffeeBadger = Math.min(50, Math.max(0, Number(niCbEl.value))); updateOutput(); });
+  const niCb = h('div', { class:'num-input' }, niCbEl, h('span', { class:'num-unit' }, '%'),
+    h('div', { class:'spin-btns' },
+      h('button', { class:'spin-btn', onclick: () => { state.coffeeBadger = Math.min(50, state.coffeeBadger+1); updateOutput(); } }, '▲'),
+      h('button', { class:'spin-btn', onclick: () => { state.coffeeBadger = Math.max(0,  state.coffeeBadger-1); updateOutput(); } }, '▼')
+    )
+  );
+
+  const slidersPanel = h('div', { class:'card sliders-panel' },
+    h('div', { class:'sliders-col' },
+      h('div', { class:'slider-row' },
+        h('span', { class:'slider-label' }, 'Seat supply'),
+        h('div', { class:'slider-wrap' }, sliderSeats),
+        niSeats
+      ),
+      h('div', { class:'slider-row' },
+        h('span', { class:'slider-label' }, 'Headcount'),
+        h('div', { class:'slider-wrap' }, sliderHc),
+        niHc
+      ),
+      h('div', { class:'slider-row has-tick-row' },
+        h('span', { class:'slider-label' }, 'Midweek Show-Up Rate'),
+        mwWrap,
+        niMw
+      ),
+    ),
+    h('div', { class:'divider-v' }),
+    h('div', { class:'cb-section' },
+      h('span', { class:'cb-label' }, 'Coffee', h('br', {}), 'Badgers'),
+      niCb
+    )
+  );
+
+  // ── SKEW PANEL ──
+  const skewLabels = [
+    { i:0, lines:['Actual'] },
+    { i:4, lines:['Moderate','Flattening'] },
+    { i:8, lines:['Flat'] },
+  ];
+
+  const skewInput = h('input', { type:'range', min:1, max:9, step:1, value:skew });
+  skewInput.addEventListener('input', () => {
+    const newSkew = Number(skewInput.value);
+    if (state.weeklyTotal === null) state.weeklyTotal = getWeeklyTotal(midweekAvg, headcount, skew, siteDist);
+    const wt = state.weeklyTotal;
+    const newW = getWeights((newSkew-1)/8, siteDist);
+    const newWSum = newW.reduce((a,b)=>a+b,0);
+    const newMwDaily = (newW[1]+newW[2]+newW[3])/3;
+    const newMwPct = Math.round((newMwDaily/newWSum)*wt/headcount*100);
+    state.skew = newSkew;
+    state.midweekAvg = Math.min(100, Math.max(34, newMwPct));
+    updateOutput();
+  });
+
+  const ticksEl = h('div', { class:'skew-ticks' });
+  skewLabels.forEach(({ i, lines }) => {
+    const leftPct = (i/8)*100;
+    let transform = 'none';
+    if (i === 4) transform = 'translateX(-50%)';
+    if (i === 8) transform = 'translateX(-100%)';
+    const d = h('div', {
+      class: 'skew-tick' + (skew === i+1 ? ' active' : ''),
+      style: { left:`${leftPct}%`, transform, position:'absolute' }
+    }, ...lines.map(l => h('div', {}, l)));
+    ticksEl.appendChild(d);
+  });
+
+  const skewPanel = h('div', { class:'card skew-panel' },
+    h('div', { class:'skew-label' }, 'Midweek Preference'),
+    h('div', { class:'skew-right' },
+      skewInput,
+      h('div', { style:{ position:'relative', height:'30px' } }, ticksEl)
+    ),
+    h('div', { id:'mini-chart', class:'mini-chart' })
+  );
+
+  // ── OUTPUT PLACEHOLDERS ──
+  const summaryGrid = h('div', { id:'summary-grid', class:'summary-grid' });
+
+  const chartCard = h('div', { class:'chart-card' },
+    h('div', { class:'chart-title' }, 'Daily Headcount VS Capacity'),
+    h('div', { class:'chart-legend' },
+      h('span', { class:'legend-item' }, h('span', { class:'legend-swatch', style:{background:STAFF_COLOR} }), 'Staff'),
+      h('span', { class:'legend-item' }, h('span', { class:'legend-swatch', style:{background:'rgba(24,95,165,0.4)',border:`1px solid ${STAFF_COLOR}`} }), 'Visitors'),
+      h('span', { class:'legend-item' }, h('span', { class:'legend-swatch', style:{background:OVER_COLOR} }), 'Over capacity'),
+      h('span', { class:'legend-item' }, h('span', { class:'legend-line', style:{background:OVER_COLOR} }), h('span', { id:'legend-seats' }, `${effectiveSeats} seats`)),
+    ),
+    h('div', { id:'chart-svg-container' })
+  );
+
+  const dayGrid = h('div', { id:'day-grid', class:'day-grid' });
+
+  // ── ASSEMBLE ──
+  app.appendChild(header);
+  app.appendChild(slidersPanel);
+  app.appendChild(skewPanel);
+  app.appendChild(summaryGrid);
+  app.appendChild(chartCard);
+  app.appendChild(dayGrid);
+
+  // populate output zones
+  updateOutput();
+}
+
+render();
+</script>
+</body>
+</html>
